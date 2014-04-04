@@ -33,39 +33,46 @@ void NetServer::slotSocketReadyRead()
     int nIdx;
     while ((nIdx = baInput.indexOf("\n")) >= 0)
     {
-        QByteArray baLine = baInput.left(nIdx).trimmed();
+        const QByteArray baLine = baInput.left(nIdx).trimmed();
         baInput = baInput.mid(nIdx + 1);
 
         LOGDEBUG("Line received:" << baLine);
 
         const int nFirstSpace = baLine.indexOf(" ");
         QByteArray baCommand;
+        QByteArray baParams;
         if (nFirstSpace >= 0)
         {
             baCommand = baLine.left(nFirstSpace);
-            baLine = baLine.mid(nFirstSpace + 1).trimmed();
+            baParams = baLine.mid(nFirstSpace + 1).trimmed();
         }
         else
         {
             baCommand = baLine;
-            baLine = QByteArray();
         }
-        baCommand = baCommand.toUpper();
+        const QByteArray baCommandUpper = baCommand.toUpper();
 
-        if (baCommand == CMD_QUIT)
+        if (baCommandUpper == CMD_QUIT)
         {
             LOGDEBUG("Closing socket");
             pSocket->close();
             return;
         }
 
-        const QList<QByteArray> listParams = splitParams(baLine);
+        bool bOk;
+        const QList<QByteArray> listParams = splitParams(baParams, bOk);
 
-        switch(baCommand.at(0))
+        if (!bOk)
+        {
+            pSocket->write("Invalid argument(s)" RESP_EOL);
+            continue;
+        }
+
+        switch(baCommandUpper.at(0))
         {
             case 'Z':
                 {
-                    emit signalSortedSet(baCommand, listParams);
+                    emit signalSortedSet(pSocket, baCommand, baCommandUpper, listParams);
                 }
                 break;
 
@@ -76,7 +83,7 @@ void NetServer::slotSocketReadyRead()
                     {
                         LOGDEBUG("Arg" << i << listParams[i]);
                     }
-                    pSocket->write("Unrecognized command\n");
+                    pSocket->write(RESP_ERROR "unknown command '" + baCommand + "'" RESP_EOL);
                 }
                 break;
         }
@@ -85,6 +92,8 @@ void NetServer::slotSocketReadyRead()
 }
 
 
+/// A socket disconnected (either because they hung up or because we told them to go away)
+/// Remove it from the hash and from memory.
 void NetServer::slotSocketDisconnected()
 {
     LOGDEBUG("Socket disconnected");
@@ -95,7 +104,8 @@ void NetServer::slotSocketDisconnected()
 
 
 
-QList<QByteArray> NetServer::splitParams(const QByteArray &baParams)
+/// Note that this doesn't work exactly the way Redis does.
+QList<QByteArray> NetServer::splitParams(const QByteArray &baParams, bool &bOk)
 {
     QList<QByteArray> listParams;
 
@@ -148,6 +158,8 @@ QList<QByteArray> NetServer::splitParams(const QByteArray &baParams)
     {
         listParams.append(baParam);
     }
+
+    bOk = !inQuote;
 
     return listParams;
 

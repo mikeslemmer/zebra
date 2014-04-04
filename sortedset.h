@@ -1,7 +1,7 @@
 #ifndef SORTEDSET_H
 #define SORTEDSET_H
 
-#include <QObject>
+#include "globals.h"
 
 class SortedSet : public QObject
 {
@@ -12,7 +12,19 @@ public:
 signals:
 
 public slots:
-    void slotCommand(const QByteArray &baCommand, const QList<QByteArray> &listParams);
+    void slotCommand(QTcpSocket *pSocket, const QByteArray &baCommand, const QByteArray &baCommandUpper, const QList<QByteArray> &listParams);
+
+private:
+    void zAdd(QTcpSocket *pSocket, const QList<QByteArray> &listParams);
+    void zCard(QTcpSocket *pSocket, const QList<QByteArray> &listParams);
+    void zCount(QTcpSocket *pSocket, const QList<QByteArray> &listParams);
+    void zRange(QTcpSocket *pSocket, const QList<QByteArray> &listParams);
+    void zRem(QTcpSocket *pSocket, const QList<QByteArray> &listParams);
+    void zScore(QTcpSocket *pSocket, const QList<QByteArray> &listParams);
+
+
+private:
+    QHash<QByteArray, QPair<QHash<QByteArray, qreal>, QMultiMap<qreal, QByteArray> > > m_hashData;
 
 };
 

@@ -8,6 +8,7 @@ ZebraApp::ZebraApp(int &argc, char **argv) :
     m_pServer = new NetServer(this);
     m_pSortedSet = new SortedSet(this);
 
-    connect(m_pServer, SIGNAL(signalSortedSet(const QByteArray &, const QList<QByteArray> &)), m_pSortedSet, SLOT(slotCommand(const QByteArray &, const QList<QByteArray> &)));
+    connect(m_pServer, SIGNAL(signalSortedSet(QTcpSocket *, const QByteArray &, const QByteArray &, const QList<QByteArray> &)),
+            m_pSortedSet, SLOT(slotCommand(QTcpSocket *, const QByteArray &, const QByteArray &, const QList<QByteArray> &)));
 
 }

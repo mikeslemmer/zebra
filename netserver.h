@@ -10,7 +10,7 @@ public:
     explicit NetServer(QObject *parent = 0);
 
 signals:
-    void signalSortedSet(const QByteArray &baCommand, const QList<QByteArray> &listParams);
+    void signalSortedSet(QTcpSocket *, const QByteArray &, const QByteArray &, const QList<QByteArray> &);
 
 protected slots:
     void slotNewConnection();
@@ -18,7 +18,7 @@ protected slots:
     void slotSocketDisconnected();
 
 private:
-    QList<QByteArray> splitParams(const QByteArray &baParams);
+    QList<QByteArray> splitParams(const QByteArray &baParams, bool &bOk);
 
 private:
     QTcpServer *m_pServer;
