@@ -18,11 +18,26 @@ protected slots:
     void slotSocketDisconnected();
 
 private:
-    QList<QByteArray> splitParams(const QByteArray &baParams, bool &bOk);
+
+//    void processTextInput(QByteArray &baInput);
+//    QList<QByteArray> splitParams(const QByteArray &baParams, bool &bOk);
 
 private:
+    class SocketData
+    {
+    public:
+        SocketData() :
+            nNumParams(0),
+            nCurrParamLength(-1) {}
+
+        QByteArray baSocketBuffer;
+        QList<QByteArray> listParams;
+        int nNumParams;
+        int nCurrParamLength;
+    };
+
     QTcpServer *m_pServer;
-    QHash<QTcpSocket *, QByteArray> m_hashSocketBuffer;
+    QHash<QTcpSocket *, SocketData> m_hashSocketData;
     QList<QTcpSocket *> m_listSocketsToClose;
 };
 

@@ -24,4 +24,5 @@ HEADERS += \
     netserver.h \
     globals.h \
     zebraapp.h \
-    sortedset.h
+    sortedset.h \
+    respformatter.h

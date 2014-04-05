@@ -1,4 +1,5 @@
 #include "sortedset.h"
+#include "respformatter.h"
 
 
 class ScoreLimit
@@ -71,7 +72,7 @@ void SortedSet::slotCommand(QTcpSocket *pSocket, const QByteArray &baCommand, co
         {
             LOGDEBUG("Arg" << i << listParams[i]);
         }
-        pSocket->write(RESP_ERROR "unknown command '" + baCommand + "'" RESP_EOL);
+        pSocket->write(RespFormatter::formatError("unknown command '" + baCommand + "'"));
     }
 
 
@@ -93,12 +94,12 @@ void SortedSet::zAdd(QTcpSocket *pSocket, const QList<QByteArray> &listParams)
 {
     if (listParams.count() < 3)
     {
-        pSocket->write(RESP_ERROR "wrong number of arguments for 'zadd' command" RESP_EOL);
+        pSocket->write(RespFormatter::formatError("wrong number of arguments for 'zadd' command"));
         return;
     }
     else if (listParams.count() % 2 == 0) // # of arguments must be odd.
     {
-        pSocket->write(RESP_ERROR "syntax error");
+        pSocket->write(RespFormatter::formatError("syntax error"));
         return;
     }
 
@@ -110,7 +111,7 @@ void SortedSet::zAdd(QTcpSocket *pSocket, const QList<QByteArray> &listParams)
         const qreal dScore = listParams.value(i).toDouble(&bOk);
         if (!bOk)
         {
-            pSocket->write(RESP_ERROR "value is not a valid float");
+            pSocket->write(RespFormatter::formatError("value is not a valid float"));
             return;
         }
         listScores << dScore;
@@ -136,7 +137,7 @@ void SortedSet::zAdd(QTcpSocket *pSocket, const QList<QByteArray> &listParams)
         pairData.second.insert(dScore, baKey);
     }
 
-    pSocket->write(RESP_INTEGER + QByteArray::number(nAdded) + RESP_EOL);
+    pSocket->write(RespFormatter::formatInt(nAdded));
 }
 
 
@@ -148,18 +149,18 @@ void SortedSet::zCard(QTcpSocket *pSocket, const QList<QByteArray> &listParams)
 {
     if (listParams.isEmpty())
     {
-        pSocket->write(RESP_ERROR "wrong number of arguments for 'zcard' command" RESP_EOL);
+        pSocket->write(RespFormatter::formatError("wrong number of arguments for 'zcard' command"));
         return;
     }
 
     QHash<QByteArray, QPair<QHash<QByteArray, qreal>, QMultiMap<qreal, QByteArray> > >::const_iterator it = m_hashData.find(listParams.first());
     if (it == m_hashData.end())
     {
-        pSocket->write(RESP_INTEGER "0" RESP_EOL);
+        pSocket->write(RespFormatter::formatInt(0));
     }
     else
     {
-        pSocket->write(RESP_INTEGER + QByteArray::number(it->second.count()) + RESP_EOL);
+        pSocket->write(RespFormatter::formatInt(it->second.count()));
     }
 }
 
@@ -172,7 +173,7 @@ void SortedSet::zCount(QTcpSocket *pSocket, const QList<QByteArray> &listParams)
 {
     if (listParams.count() != 3)
     {
-        pSocket->write(RESP_ERROR "wrong number of arguments for 'zcount' command" RESP_EOL);
+        pSocket->write(RespFormatter::formatError("wrong number of arguments for 'zcount' command"));
         return;
     }
 
@@ -181,7 +182,7 @@ void SortedSet::zCount(QTcpSocket *pSocket, const QList<QByteArray> &listParams)
 
     if (!limitMax.bSuccess || !limitMin.bSuccess)
     {
-        pSocket->write(RESP_ERROR "min or max is not a float" RESP_EOL);
+        pSocket->write(RespFormatter::formatError("min or max is not a float"));
         return;
     }
 
@@ -199,7 +200,7 @@ void SortedSet::zCount(QTcpSocket *pSocket, const QList<QByteArray> &listParams)
         nCount++;
     }
 
-    pSocket->write(RESP_INTEGER + QByteArray::number(nCount) + RESP_EOL);
+    pSocket->write(RespFormatter::formatInt(nCount));
 
 }
 
@@ -214,7 +215,7 @@ void SortedSet::zRange(QTcpSocket *pSocket, const QList<QByteArray> &listParams)
 {
     if (listParams.count() < 3 || listParams.count() > 4)
     {
-        pSocket->write(RESP_ERROR "wrong number of arguments for 'zrange' command" RESP_EOL);
+        pSocket->write(RespFormatter::formatError("wrong number of arguments for 'zrange' command"));
         return;
     }
 
@@ -223,7 +224,7 @@ void SortedSet::zRange(QTcpSocket *pSocket, const QList<QByteArray> &listParams)
     {
         if (listParams.value(3).toUpper() != "WITHSCORES")
         {
-            pSocket->write(RESP_ERROR "syntax error" RESP_EOL);
+            pSocket->write(RespFormatter::formatError("syntax error"));
             return;
         }
         bWithScores = true;
@@ -235,7 +236,7 @@ void SortedSet::zRange(QTcpSocket *pSocket, const QList<QByteArray> &listParams)
     int nMax = listParams.value(2).toInt(&bOkMax);
     if (!bOkMin || !bOkMax)
     {
-        pSocket->write(RESP_ERROR "value is not an integer or out of range" RESP_EOL);
+        pSocket->write(RespFormatter::formatError("value is not an integer or out of range"));
         return;
     }
 
@@ -252,15 +253,15 @@ void SortedSet::zRange(QTcpSocket *pSocket, const QList<QByteArray> &listParams)
 
     if (nMax < nMin || nMax < 0 || nMin > nMapCount - 1)
     {
-        pSocket->write(RESP_EMPTY RESP_EOL);
+        pSocket->write(RespFormatter::formatArray(QList<QByteArray>()));
         return;
     }
 
     // Note that this is linear time given how QMap works. Might not be too hard to fix that with an
     // additional list or something.
-    int nOutputPos = 1;
     QMultiMap<qreal, QByteArray>::iterator it;
     int nPos;
+    QList<QByteArray> listOutput;
     for (it = pairData.second.begin(), nPos = 0;
          it != pairData.second.end() && nPos <= nMax;
          it++, nPos++)
@@ -268,22 +269,15 @@ void SortedSet::zRange(QTcpSocket *pSocket, const QList<QByteArray> &listParams)
         // Note: need to sort by value if same key!
         if (nPos >= nMin)
         {
-            pSocket->write(QByteArray::number(nOutputPos) + RESP_ARRAY_PAREN RESP_QUOTE + it.value() + RESP_QUOTE + RESP_EOL);
-            nOutputPos++;
+            listOutput << it.value();
             if (bWithScores)
             {
-                pSocket->write(QByteArray::number(nOutputPos) + RESP_ARRAY_PAREN RESP_QUOTE + QByteArray::number(it.key()) + RESP_QUOTE + RESP_EOL);
-                nOutputPos++;
+                listOutput << QByteArray::number(it.key());
             }
         }
     }
 
-    if (!nOutputPos)
-    {
-        pSocket->write(RESP_EMPTY RESP_EOL);
-        return;
-    }
-
+    pSocket->write(RespFormatter::formatArray(listOutput));
 }
 
 
@@ -295,7 +289,7 @@ void SortedSet::zRem(QTcpSocket *pSocket, const QList<QByteArray> &listParams)
 {
     if (listParams.count() < 2)
     {
-        pSocket->write(RESP_ERROR "wrong number of arguments for 'zrem' command" RESP_EOL);
+        pSocket->write(RespFormatter::formatError("wrong number of arguments for 'zrem' command"));
         return;
     }
 
@@ -315,7 +309,7 @@ void SortedSet::zRem(QTcpSocket *pSocket, const QList<QByteArray> &listParams)
         }
     }
 
-    pSocket->write(RESP_INTEGER + QByteArray::number(nCount) + RESP_EOL);
+    pSocket->write(RespFormatter::formatInt(nCount));
 }
 
 
@@ -327,7 +321,7 @@ void SortedSet::zScore(QTcpSocket *pSocket, const QList<QByteArray> &listParams)
 {
     if (listParams.count() != 2)
     {
-        pSocket->write(RESP_ERROR "wrong number of arguments for 'zscore' command" RESP_EOL);
+        pSocket->write(RespFormatter::formatError("wrong number of arguments for 'zscore' command"));
         return;
     }
 
@@ -335,11 +329,11 @@ void SortedSet::zScore(QTcpSocket *pSocket, const QList<QByteArray> &listParams)
     QHash<QByteArray, qreal>::iterator it = pairData.first.find(listParams.value(1));
     if (it != pairData.first.end())
     {
-        pSocket->write(RESP_QUOTE + QByteArray::number(it.value()) + RESP_QUOTE RESP_EOL);
+        pSocket->write(RespFormatter::formatText(QByteArray::number(it.value())));
     }
     else
     {
-        pSocket->write(RESP_NIL);
+        pSocket->write(RespFormatter::formatText(QByteArray()));
     }
 }
 
