@@ -84,7 +84,6 @@ void NetServer::slotSocketReadyRead()
                 return;
             }
 
-//            LOGDEBUG("Num params:" << socketData.nNumParams);
         }
         else
         {

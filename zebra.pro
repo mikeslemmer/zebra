@@ -15,6 +15,8 @@ CONFIG   -= app_bundle
 
 TEMPLATE = app
 
+QMAKE_CXXFLAGS_RELEASE = -O3
+
 SOURCES += main.cpp \
     netserver.cpp \
     zebraapp.cpp \
